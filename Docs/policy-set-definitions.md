@@ -56,7 +56,7 @@ The names of the definition JSON files don't matter, the Policy Sets are registe
 
 ## Custom Definitions
 
-Custom definitions are uploaded to Azure at the time of initial deployment to a pacSelector. For each pacSelector, the definition is uploaded to the pacSelector's defined root. This makes it available to the entirity of that pacSelector, while facilitating code promotion by allowing each pacSelector to recieve the updated definition as part of the release/deployment process.
+Custom definitions are uploaded to Azure at the time of initial deployment to a pacSelector. For each pacSelector, the definition is uploaded to the pacSelector's defined root. This makes it available to the entirity of that pacSelector, while facilitating code promotion by allowing each pacSelector to receive the updated definition as part of the release/deployment process.
 
 ## Policy Definition Groups
 
@@ -70,18 +70,6 @@ Custom definitions are uploaded to Azure at the time of initial deployment to a 
   // built-in Policy Set definition "Microsoft cloud security benchmark"
   "/providers/Microsoft.Authorization/policySetDefinitions/1f3afdf9-d0c9-4c3d-847f-89da613e70a8"
 ],
-```
-
-## JSON Schema
-
-The GitHub repo contains a JSON schema which can be used in tools such as [VS Code](https://code.visualstudio.com/Docs/languages/json#_json-schemas-and-settings) to provide code completion.
-
-To utilize the schema add a ```$schema``` tag to the JSON file.
-
-```
-{
-  "$schema": "https://raw.githubusercontent.com/Azure/enterprise-azure-policy-as-code/main/Schemas/policy-set-definition-schema.json"
-}
 ```
 
 ## Recommendations

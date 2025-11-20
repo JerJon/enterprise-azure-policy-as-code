@@ -1,13 +1,27 @@
-# Enterprise Azure Policy as Code Overview
+![EPAC](Images/epac_banner_thin.svg)
 
 Enterprise Azure Policy as Code (EPAC for short) is a number of PowerShell scripts which can be used in CI/CD based system or a semi-automated use to deploy Policies, Policy Sets, Policy Assignments, Policy Exemptions and Role Assignments. It also contains operational scripts to simplify operational tasks.
 
 ## Latest Updates
 
-For all EPAC changes and newest updates, please visit our [GitHub Releases Page](https://github.com/Azure/enterprise-azure-policy-as-code/releases).
+### 📺 YouTube series for EPAC
+
+Make sure you [check out the series](https://www.youtube.com/channel/UCtkZkkgT-mp6PcmvfqlwvBQ) of videos explaining how to implement EPAC in your environment. New videos to be added soon!
+
+### v11.0.0 is Here!
+
+- New modern look. Updated the output from the EPAC commands to look more modern and added accessibility features.
+- Changes to support for Azure Lighthouse (see below)
+- Changes to the ALZ sync process to support easier customization via a single file and not a forked repository
+    - Ignore archetypes
+    - Add custom management groups
+    - Add/Modify parameters for individual assignments
+    - Schema file for the structure file
 
 > [!CAUTION]
-> Review the Breaking changes in v10.0.0 carefully to avoid issues with your EPAC instance. The changes are [documented here](start-changes.md#breaking-changes-in-v1000).
+> Changes to Lighthouse deployments via EPAC in v11.0.0. Review the upcoming changes to avoid issues with your EPAC instance. The changes are [documented here](start-changes.md).
+
+For all EPAC changes and newest updates, please visit our [GitHub Releases Page](https://github.com/Azure/enterprise-azure-policy-as-code/releases).
 
 > [!IMPORTANT]
 > Starting with v8.0.0, Enterprise Policy as Code (EPAC) is tracking the usage using [Customer Usage Attribution](https://learn.microsoft.com/en-us/partner-center/marketplace/azure-partner-customer-usage-attribution). In accordance with Microsoft's privacy policies, you have the right to **opt-out** of this tracking. Please review [Telemetry below](#telemetry-tracking-using-customer-usage-attribution-pid) and [Microsoft Privacy](https://privacy.microsoft.com/en-US/) for more information.
@@ -97,7 +111,6 @@ The following is the unique IDs (also known as PIDs) used in each of the modules
 | `Export-NonComplianceReports` | `f464b017-898b-4156-9da5-af932831fa2f` |
 | `Get-AzExemptions` | `3f02e7d5-1cf5-490a-a95c-3d49f0673093` |
 | `New-AzPolicyReaderRole` | `f4b5b7ac-70b4-40fc-836f-585791aa83e7` |
-| `Sync-ALZPolicies` | `a5e82cd0-9dda-417b-948c-68ec81596c32`|
 | `Sync-ALZPolicyFromLibrary` | `adaa7564-1962-46e6-92b4-735e91f76d43` |
 
 ## Support

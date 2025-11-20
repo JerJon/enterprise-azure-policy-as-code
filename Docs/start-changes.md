@@ -1,7 +1,28 @@
-# Changes in v10.0.0
+# Changes in v11.0.0
 
-> [!CAUTION]
-> Read the **breaking changes** below carefully and adjust your environment accordingly.
+- New modern look. Updated the output from the EPAC commands to look more modern and added accessibility features.
+- Changes to support for Azure Lighthouse (see below)
+- Changes to the ALZ sync process to support easier customization via a single file and not a forked repository
+    - Ignore archetypes
+    - Add custom management groups
+    - Add/Modify parameters for individual assignments
+    - Schema file for the structure file
+
+### Changes in Lighthouse Deployments
+
+EPAC is introducing updates that affect how role assignments are handled across managing and managed Lighthouse tenants. While EPAC does not yet support all Lighthouse scenarios, two specific use cases have been implemented based on GitHub issue feedback. These changes will break existing configurations that do not follow the new guidance detailed in [Lighthouse Subscription Management with EPAC](guidance-lighthouse.md).
+
+For users currently leveraging EPAC for Lighthouse deployments, once v11.0.0 is released an immediate update to the global-settings.jsonc file is required. The existing properties will become outdated and will cause pipeline failures if not corrected. To ensure successful deployments, please update the global settings configuration without delay.
+
+**Use Case 1**
+
+- Role Assignments from Managing Tenant to Managed Subscriptions
+Scenario: Deploying diagnostics policies in the managing tenant that write data to resources in Lighthouse-managed subscriptions.
+
+**Use Case 2**
+
+- Role Assignments Within Managed Subscriptions (Cast Instances)
+Scenario: MSPs deploying policies with role assignments to customer subscriptions without direct access to their tenant.
 
 ## Breaking Changes in v10.0.0
 

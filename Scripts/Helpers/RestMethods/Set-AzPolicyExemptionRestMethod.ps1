@@ -2,13 +2,12 @@ function Set-AzPolicyExemptionRestMethod {
     [CmdletBinding()]
     param (
         $ExemptionObj,
-        $ApiVersion
+        $ApiVersion,
+        $FailOnExemptionError
     )
 
     # Write log info
-    $displayName = $ExemptionObj.displayName
-    $id = $ExemptionObj.id
-    Write-Information "$displayName($id)"
+    Write-ModernStatus -Message "Setting policy at scope: $($ExemptionObj.scope)" -Status "info" -Indent 4
 
     # Build the REST API body
     $properties = @{
@@ -39,6 +38,10 @@ function Set-AzPolicyExemptionRestMethod {
             Write-Warning "Ignoring scope locked error: $($statusCode) -- $($content)"
         }
         else {
+            if ($FailOnExemptionError -eq $true) {
+                Write-Error "Error, failing deployment: $($statusCode) -- $($content)"
+                exit 1
+            }
             Write-Warning "Error, continue deployment: $($statusCode) -- $($content)"
         }
         if ($statusCode -eq 404) {

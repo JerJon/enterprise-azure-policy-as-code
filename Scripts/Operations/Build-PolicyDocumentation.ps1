@@ -20,6 +20,9 @@
 .PARAMETER IncludeManualPolicies
     Include Policies with effect Manual. Default: do not include Policies with effect Manual.
 
+.PARAMETER StrictMode
+    When enabled (default), the script will fail with an error if Policy Definitions referenced by assignments are not found. When disabled, shows warnings and continues.
+
 .EXAMPLE
     Build-PolicyDocumentation.ps1 -DefinitionsRootFolder "C:\PAC\Definitions" -OutputFolder "C:\PAC\Output" -Interactive
     Builds documentation from instructions in policyDocumentations folder reading the deployed Policy Resources from the EPAC environment.
@@ -31,6 +34,10 @@
 .EXAMPLE
     Build-PolicyDocumentation.ps1 -DefinitionsRootFolder "C:\PAC\Definitions" -OutputFolder "C:\PAC\Output" -Interactive -SuppressConfirmation
     Builds documentation from instructions in policyDocumentations folder reading the deployed Policy Resources from the EPAC environment. The script prompts for the PAC environment and uses the default definitions and output folders. It suppresses prompt for confirmation to delete existing file in interactive mode.
+
+.EXAMPLE
+    Build-PolicyDocumentation.ps1 -StrictMode:$false
+    Builds documentation in non-strict mode. The script will show warnings and continue if any Policy Definitions referenced by assignments are not found, instead of failing with an error.
 
 .LINK
     https://azure.github.io/enterprise-azure-policy-as-code/#deployment-scripts
@@ -61,7 +68,13 @@ param (
     [string] $WikiClonePat,
 
     [parameter(Mandatory = $false, HelpMessage = "Defines which Policy as Code (PAC) environment we are using, if omitted, the script prompts for a value. The values are read from `$DefinitionsRootFolder/global-settings.jsonc.", Position = 0)]
-    [string] $pacSelector
+    [string] $pacSelector,
+
+    [parameter(Mandatory = $false, HelpMessage = "Will only document assignments that are managed by your defined PAC Owner", Position = 0)]
+    [switch] $OnlyCheckManagedAssignments,
+
+    [parameter(Mandatory = $false, HelpMessage = "When enabled, the script will fail with an error if Policy Definitions referenced by assignments are not found. When disabled, shows warnings and continues.")]
+    [switch] $StrictMode = $false
 )
 
 # Dot Source Helper Scripts
@@ -87,13 +100,12 @@ else {
 
 # Telemetry
 if ($globalSettings.telemetryEnabled) {
-    Write-Information "Telemetry is enabled"
+    Write-ModernStatus -Message "Telemetry is enabled" -Status "info" -Indent 2
     Submit-EPACTelemetry -Cuapid "pid-2dc29bae-2448-4d7f-b911-418421e83900" -DeploymentRootScope $pacEnvironment.deploymentRootScope
 }
 else {
-    Write-Information "Telemetry is disabled"
+    Write-ModernStatus -Message "Telemetry is disabled" -Status "info" -Indent 2
 }
-Write-Information ""
 
 # Caching information to optimize different outputs
 $cachedPolicyResourceDetails = @{}
@@ -103,10 +115,8 @@ $pacEnvironment = $null
 
 #endregion Initialize
 
-Write-Information ""
-Write-Information "==================================================================================================="s
-Write-Information "Processing documentation definitions in folder '$definitionsFolder'"
-Write-Information "==================================================================================================="
+Write-ModernSection -Title "Processing Documentation Definitions" -Color Blue
+Write-ModernStatus -Message "Source folder: $definitionsFolder" -Status "info" -Indent 2
 if (!(Test-Path $definitionsFolder -PathType Container)) {
     Write-Error "Policy documentation specification folder 'policyDocumentations not found.  This EPAC instance cannot generate documentation." -ErrorAction Stop
 }
@@ -117,7 +127,7 @@ $filesRaw += Get-ChildItem -Path $definitionsFolder -Recurse -File -Filter "*.js
 $files = @()
 $files += ($filesRaw  | Sort-Object -Property Name)
 if ($files.Length -gt 0) {
-    Write-Information "Number of documentation definition files = $($files.Length)"
+    Write-ModernStatus -Message "Found $($files.Length) documentation definition files" -Status "success" -Indent 2
 }
 else {
     Write-Error "No documentation definition files found!" -ErrorAction Stop
@@ -145,7 +155,7 @@ foreach ($file in $files) {
             }
             1 {
                 $processThisFile = $false
-                Write-Information "Skipping file '$($file.Name)'"
+                Write-ModernStatus -Message "Skipping file: $($file.Name)" -Status "skip" -Indent 4
             }
             2 {
                 $processThisFile = $true
@@ -155,7 +165,7 @@ foreach ($file in $files) {
     }
 
     if ($processThisFile) {
-        Write-Information "Reading and Processing '$($file.Name)'"
+        Write-ModernStatus -Message "Reading and processing: $($file.Name)" -Status "info" -Indent 4
         $json = Get-Content -Path $file.FullName -Raw -ErrorAction Stop
         try {
             $documentationSpec = $json | ConvertFrom-Json
@@ -295,7 +305,8 @@ foreach ($file in $files) {
                     -PacEnvironmentSelector $currentPacEnvironmentSelector `
                     -AssignmentArray $assignmentArray `
                     -PolicyResourceDetails $policyResourceDetails `
-                    -CachedAssignmentsDetails $cachedAssignmentsDetails
+                    -CachedAssignmentsDetails $cachedAssignmentsDetails `
+                    -StrictMode:$StrictMode
 
                 # Flatten Policy lists in Assignments and reconcile the most restrictive effect for each Policy
                 $flatPolicyList = Convert-PolicyResourcesDetailsToFlatList `
@@ -317,7 +328,7 @@ foreach ($file in $files) {
             foreach ($documentationSpecification in $documentationSpecifications) {
                 $documentationType = $documentationSpecification.type
                 if ($null -ne $documentationType) {
-                    Write-Information "Field documentationType ($($documentationType)) is deprecated"
+                    Write-ModernStatus -Message "Field documentationType ($documentationType) is deprecated" -Status "warning" -Indent 6
                 }
                 Out-DocumentationForPolicyAssignments `
                     -OutputPath $outputPath `
@@ -369,8 +380,26 @@ foreach ($file in $files) {
 
             # Create artificial Environment Categories based on Assignment Scope
             $environmentCategories = @()
+            
+            # Get the current documentAllAssignments configuration (could be object or array)
+            $currentConfig = $documentationSpec.documentAssignments.documentAllAssignments
+            if ($currentConfig -is [array]) {
+                $excludeScopeTypes = $currentConfig[0].excludeScopeTypes
+            }
+            else {
+                $excludeScopeTypes = $currentConfig.excludeScopeTypes
+            }
+            
             foreach ($key in $policyResourceDetails.policyAssignments.keys) {
-                if ($environmentCategories.environmentCategory -notContains ($policyResourceDetails.policyAssignments.$key.scopeDisplayName)) {
+                $scopeType = $policyResourceDetails.policyAssignments.$key.scopeType
+                
+                # Check if this scopeType should be excluded
+                $shouldExcludeScope = $false
+                if ($null -ne $excludeScopeTypes -and $scopeType -in $excludeScopeTypes) {
+                    $shouldExcludeScope = $true
+                }
+                
+                if (-not $shouldExcludeScope -and $environmentCategories.environmentCategory -notContains ($policyResourceDetails.policyAssignments.$key.scopeDisplayName)) {
                     $environmentCategories += New-Object PSObject -Property @{
                         pacEnvironment            = $pacEnvironmentSelector
                         environmentCategory       = $policyResourceDetails.policyAssignments.$key.scopeDisplayName
@@ -384,13 +413,34 @@ foreach ($file in $files) {
             # Assignment by environmentCategory
             foreach ($environment in $environmentCategories) {
                 foreach ($key in $policyResourceDetails.policyAssignments.keys) {
+                    $scopeType = $policyResourceDetails.policyAssignments.$key.scopeType
+                    
+                    # Get the current documentAllAssignments configuration (could be object or array)
+                    $currentConfig = $documentationSpec.documentAssignments.documentAllAssignments
+                    if ($currentConfig -is [array]) {
+                        $excludeScopeTypes = $currentConfig[0].excludeScopeTypes
+                        $skipPolicyAssignments = $currentConfig[0].skipPolicyAssignments
+                        $skipPolicyDefinitions = $currentConfig[0].skipPolicyDefinitions
+                    }
+                    else {
+                        $excludeScopeTypes = $currentConfig.excludeScopeTypes
+                        $skipPolicyAssignments = $currentConfig.skipPolicyAssignments
+                        $skipPolicyDefinitions = $currentConfig.skipPolicyDefinitions
+                    }
+                    
+                    # Check if this scopeType should be excluded
+                    $shouldExcludeScope = $false
+                    if ($null -ne $excludeScopeTypes -and $scopeType -in $excludeScopeTypes) {
+                        $shouldExcludeScope = $true
+                    }
+                    
                     # Validate the categories match to the populate with an assignment
-                    if ($environment.environmentCategory -eq $policyResourceDetails.policyAssignments.$key.scopeDisplayName) {   
+                    if (-not $shouldExcludeScope -and $environment.environmentCategory -eq $policyResourceDetails.policyAssignments.$key.scopeDisplayName) {   
                         # Validate it is not in our list of skipAssignments
-                        if ($key -notin $documentationSpec.documentAssignments.documentAllAssignments.skipPolicyAssignments) {
+                        if ($key -notin $skipPolicyAssignments) {
                             $defID = $policyResourceDetails.policyAssignments.$key.properties.policyDefinitionId
                             # Validate it is not in our list of skipPolicyDefinitions
-                            if ($defID -notin $documentationSpec.documentAssignments.documentAllAssignments.skipPolicyDefinitions) {
+                            if ($defID -notin $skipPolicyDefinitions) {
                                 $suffix = [guid]::NewGuid().Guid.split("-")[0]
                                 $environment.representativeAssignments += New-Object PSObject -Property @{
                                     shortName = $policyResourceDetails.policyAssignments.$key.name + "_" + $suffix
@@ -486,7 +536,33 @@ foreach ($file in $files) {
                     -PacEnvironmentSelector $currentPacEnvironmentSelector `
                     -AssignmentArray $assignmentArray `
                     -PolicyResourceDetails $policyResourceDetails `
-                    -CachedAssignmentsDetails $cachedAssignmentsDetails
+                    -CachedAssignmentsDetails $cachedAssignmentsDetails `
+                    -StrictMode:$StrictMode
+
+                # Remove entries if not managed by PAC
+                if ($OnlyCheckManagedAssignments) {
+    
+                    # Collect keys to remove
+                    $keysToRemove = @()
+                    foreach ($key in $assignmentsDetails.Keys) {
+                        $pacOwner = $assignmentsDetails[$key].assignment.pacOwner
+                        if ($pacOwner -eq "unknownOwner" -or $pacOwner -eq "otherPac") {
+                            $keysToRemove += $key
+                        }
+                    }
+
+                    # Remove the entries from assignmentsDetails
+                    foreach ($key in $keysToRemove) {
+                        $assignmentsDetails.Remove($key)
+                    }
+
+                    # Remove the entries from ItemList
+                    $itemList = $itemList | Where-Object { $_.assignmentId -notin $keysToRemove }
+                }
+
+                If ($assignmentsDetails.Count -eq 0) {
+                    Write-Error "No EPAC owned assignments found for pacEnvironment '$($environmentCategoryEntry.pacEnvironment)' in environment category '$($environmentCategoryEntry.environmentCategory)'. Skipping documentation generation."
+                }
 
                 # Flatten Policy lists in Assignments and reconcile the most restrictive effect for each Policy
                 $flatPolicyList = Convert-PolicyResourcesDetailsToFlatList `
@@ -513,7 +589,7 @@ foreach ($file in $files) {
 
                 $documentationType = $documentationSpecification.type
                 if ($null -ne $documentationType) {
-                    Write-Information "Field documentationType ($($documentationType)) is deprecated"
+                    Write-ModernStatus -Message "Field documentationType ($documentationType) is deprecated" -Status "warning" -Indent 6
                 }
                 Out-DocumentationForPolicyAssignments `
                     -OutputPath $outputPath `
@@ -527,4 +603,5 @@ foreach ($file in $files) {
             }
         }
     }
+    Write-Information ""
 }
