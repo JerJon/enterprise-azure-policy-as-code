@@ -11,7 +11,9 @@ function Build-ExemptionsPlan {
         $Assignments,
         $DeployedExemptions,
         $Exemptions,
-        [switch]$SkipNotScopedExemptions
+        [switch]$SkipNotScopedExemptions,
+        [bool] $FailOnExemptionError = $false,
+        [switch] $DetailedOutput
     )
 
     Write-ModernSection -Title "Processing Policy Exemptions" -Color Blue
@@ -59,6 +61,7 @@ function Build-ExemptionsPlan {
             $extension = $file.Extension
             $fullName = $file.FullName
             # $fileName = $file.Name
+            Write-ModernStatus -Message "Processing exemption file '$($fullName)'" -Status "info" -Indent 2
             $errorInfo = New-ErrorInfo -FileName $fullName
             $exemptionsArray = [System.Collections.ArrayList]::new()
             $isCsvFile = $false
@@ -329,10 +332,16 @@ function Build-ExemptionsPlan {
                             if ($null -eq $calculatedPolicyAssignments -or $calculatedPolicyAssignments.Count -eq 0) {
                                 $calculatedPolicyAssignments = @()
                                 Write-ModernStatus -Message "Row $($entryNumber): No assignment found for policyAssignmentId '$policyAssignmentId', skipping row" -Status "warning" -Indent 4
+                                if ($FailOnExemptionError) {
+                                    Add-ErrorMessage -ErrorInfo $errorInfo -ErrorString "No assignment found for policyAssignmentId '$policyAssignmentId'" -EntryNumber $entryNumber
+                                }
                             }
                         }
                         else {
                             Write-ModernStatus -Message "Row $($entryNumber): policyAssignmentId '$policyAssignmentId' not found in current root scope $($PacEnvironment.deploymentRootScope), skipping row" -Status "warning" -Indent 4
+                            if ($FailOnExemptionError) {
+                                Add-ErrorMessage -ErrorInfo $errorInfo -ErrorString "policyAssignmentId '$policyAssignmentId' not found in current root scope $($PacEnvironment.deploymentRootScope)" -EntryNumber $entryNumber
+                            }
                         }
                     }
                     elseif ($null -ne $policyDefinitionName) {
@@ -343,12 +352,16 @@ function Build-ExemptionsPlan {
                             -AllDefinitions $AllDefinitions.policydefinitions
                         if ($null -eq $policyDefinitionId) {
                             Write-ModernStatus -Message "Row $($entryNumber): policyDefinitionName '$policyDefinitionName' not found in current root scope $($PacEnvironment.deploymentRootScope), skipping row" -Status "warning" -Indent 4
+                            if ($FailOnExemptionError) {
+                                Add-ErrorMessage -ErrorInfo $errorInfo -ErrorString "policyDefinitionName '$policyDefinitionName' not found in current root scope $($PacEnvironment.deploymentRootScope)" -EntryNumber $entryNumber
+                            }
                         }
                         else {
                             $calculatedPolicyAssignments = $byPolicyIdCalculatedAssignments.$policyDefinitionId
                             if ($null -eq $calculatedPolicyAssignments -or $calculatedPolicyAssignments.Count -eq 0) {
                                 $calculatedPolicyAssignments = @()
                                 Write-ModernStatus -Message "Row $($entryNumber): No assignments found for policyDefinitionName '$policyDefinitionName', skipping row" -Status "warning" -Indent 4
+
                             }
                         }
                     }
@@ -361,6 +374,9 @@ function Build-ExemptionsPlan {
                         if ($null -eq $policyDefinitionId) {
                             $calculatedPolicyAssignments = @()
                             Write-ModernStatus -Message "Row $($entryNumber): policyDefinitionId '$($epacMetadataDefinitionSpecification.policyDefinitionId)' not found in current root scope $($PacEnvironment.deploymentRootScope), skipping row" -Indent 4
+                            if ($FailOnExemptionError) {
+                                Add-ErrorMessage -ErrorInfo $errorInfo -ErrorString "policyDefinitionId '$($epacMetadataDefinitionSpecification.policyDefinitionId)' not found in current root scope $($PacEnvironment.deploymentRootScope)" -EntryNumber $entryNumber
+                            }
                         }
                         else {
                             $calculatedPolicyAssignments = $byPolicyIdCalculatedAssignments.$policyDefinitionId
@@ -369,6 +385,7 @@ function Build-ExemptionsPlan {
                                 Write-ModernStatus -Message "Row $($entryNumber): No assignments found for policyDefinitionId '$($epacMetadataDefinitionSpecification.policyDefinitionId)', skipping row" -Status "warning" -Indent 4
                             }
                         }
+
                     }
                     elseif ($null -ne $policySetDefinitionName) {
                         $epacMetadataDefinitionSpecification.policySetDefinitionName = $policySetDefinitionName
@@ -378,6 +395,9 @@ function Build-ExemptionsPlan {
                             -AllPolicySetDefinitions $AllDefinitions.policysetdefinitions
                         if ($null -eq $policySetDefinitionId) {
                             Write-ModernStatus -Message "Row $($entryNumber): policySetDefinitionName '$policySetDefinitionName' not found in current root scope $($PacEnvironment.deploymentRootScope), skipping row" -Status "warning" -Indent 4
+                            if ($FailOnExemptionError) {
+                                Add-ErrorMessage -ErrorInfo $errorInfo -ErrorString "policySetDefinitionName '$policySetDefinitionName' not found in current root scope $($PacEnvironment.deploymentRootScope)" -EntryNumber $entryNumber
+                            }
                         }
                         else {
                             $calculatedPolicyAssignments = $byPolicySetIdCalculatedAssignments.$policySetDefinitionId
@@ -386,6 +406,7 @@ function Build-ExemptionsPlan {
                                 Write-ModernStatus -Message "Row $($entryNumber): No assignments found for policySetDefinitionName '$policySetDefinitionName', skipping row" -Status "warning" -Indent 4
                             }
                         }
+
                     }
                     elseif ($null -ne $policySetDefinitionId) {
                         $epacMetadataDefinitionSpecification.policySetDefinitionId = $policySetDefinitionId
@@ -395,6 +416,9 @@ function Build-ExemptionsPlan {
                             -AllPolicySetDefinitions $AllDefinitions.policysetdefinitions
                         if ($null -eq $policySetDefinitionId) {
                             Write-ModernStatus -Message "Row $($entryNumber): policySetDefinitionId '$($epacMetadataDefinitionSpecification.policySetDefinitionId)' not found in current root scope $($PacEnvironment.deploymentRootScope), skipping row" -Status "warning" -Indent 4
+                            if ($FailOnExemptionError) {
+                                Add-ErrorMessage -ErrorInfo $errorInfo -ErrorString "policySetDefinitionId '$($epacMetadataDefinitionSpecification.policySetDefinitionId)' not found in current root scope $($PacEnvironment.deploymentRootScope)" -EntryNumber $entryNumber
+                            }
                         }
                         else {
                             $calculatedPolicyAssignments = $byPolicySetIdCalculatedAssignments.$policySetDefinitionId
@@ -405,6 +429,7 @@ function Build-ExemptionsPlan {
                         }
                     }
                 }
+
                 #endregion retrieve pre-calculated Assignments
 
                 #region check required fields and allowed values
@@ -522,6 +547,7 @@ function Build-ExemptionsPlan {
                         }
                         elseif ($daysUntilExpired -le 15) {
                             Write-ModernStatus -Message "Exemption entry $($entryNumber): Exemption '$name' in definitions expires in $daysUntilExpired days." -Status "warning" -Indent 4
+
                         }
                     }
                 }
@@ -630,7 +656,16 @@ function Build-ExemptionsPlan {
                                         $resourceIdsBySubscriptionId.Add($subscriptionId, $resourceIds)
                                     }
                                     if ($resourceStatus -eq "individualResourceDoesNotExists") {
-                                        Write-ModernStatus -Message "Row $($entryNumber): Resource '$currentScope' does not exist, skipping entry." -Status "warning" -Indent 4
+                                        if ($FailOnExemptionError) {
+                                            Write-ModernStatus -Message "Row $($entryNumber): Resource '$currentScope' does not exist." -Status "error" -Indent 4
+                                            $errorInfo.errorsInFile++
+                                            $errorInfo.hasErrors = $true
+                                            $errorInfo.hasLocalErrors = $true
+                                            $errorInfo.currentEntryNumber = $entryNumber
+                                        }
+                                        else {
+                                            Write-ModernStatus -Message "Row $($entryNumber): Resource '$currentScope' does not exist, skipping entry." -Status "warning" -Indent 4
+                                        }
                                         $Exemptions.numberOfOrphans++
                                     }
                                 }
@@ -650,6 +685,9 @@ function Build-ExemptionsPlan {
                             else {
                                 Write-ModernStatus -Message "Exemption entry $($entryNumber): Exemption scope $($currentScope) not found in current scope tree for root `n      $($PacEnvironment.deploymentRootScope), skipping entry." -Status "warning" -Indent 4
                                 $scopeIsValid = $false
+                                if ($FailOnExemptionError) {
+                                    Add-ErrorMessage -ErrorInfo $errorInfo -ErrorString "Exemption scope $($currentScope) not found in current scope tree for root $($PacEnvironment.deploymentRootScope)" -EntryNumber $entryNumber
+                                }
                             }       
                         }
                         else {
@@ -715,11 +753,11 @@ function Build-ExemptionsPlan {
                                             $null = $filteredPolicyAssignments.Add($clonedCalculatedPolicyAssignment)
                                         }
                                         else {
-                                            Write-ModernStatus -Message "Exemption scope = '$($currentScope)' is in the notScopes list for Assignment  `n      '$($calculatedPolicyAssignment.id)'." -Status "warning" -Indent 4
+                                            Write-Verbose "Exemption scope = '$($currentScope)' is in the notScopes list for Assignment '$($calculatedPolicyAssignment.id)'."
                                         }
                                     }
                                     else {
-                                        Write-ModernStatus -Message "Assignment scope = '$($policyAssignmentScope)' is not in the current scope tree for root  `n      $($PacEnvironment.deploymentRootScope), skipping assignment." -Status "warning" -Indent 4
+                                        Write-Verbose "Assignment scope = '$($policyAssignmentScope)' is not in the current scope tree for root $($PacEnvironment.deploymentRootScope), skipping assignment."
                                     }
                                 }
                             }
@@ -947,6 +985,7 @@ function Build-ExemptionsPlan {
                                     }
                                     else {
                                         Write-ModernStatus -Message "Replace (assignmentId changed) '$($exemptionDisplayName)' at scope '$($currentScope)'`n      assignmentId '$($deployedManagedExemption.policyAssignmentId)' to '$($policyAssignmentId)'" -Status "update" -Indent 4
+                                        Write-Verbose "    $exemptionId"
                                         $null = $Exemptions.replace.Add($exemptionId, $exemption)
                                         $Exemptions.numberOfChanges++
                                     }
@@ -979,7 +1018,8 @@ function Build-ExemptionsPlan {
                                     $policyDefinitionReferenceIdsMatches = Confirm-ObjectValueEqualityDeep $deployedPolicyDefinitionReferenceIdsArray $policyDefinitionReferenceIdsAugmented
                                     $metadataMatches, $changePacOwnerId = Confirm-MetadataMatches `
                                         -ExistingMetadataObj $deployedManagedExemption.metadata `
-                                        -DefinedMetadataObj $clonedMetadata
+                                        -DefinedMetadataObj $clonedMetadata `
+                                        -SuppressPacOwnerIdMessage:$DetailedOutput
                                     $assignmentScopeValidationMatches = ($deployedManagedExemption.assignmentScopeValidation -eq $assignmentScopeValidation) `
                                         -or ($null -eq $deployedManagedExemption.assignmentScopeValidation -and ($validateScope))
                                     $resourceSelectorsMatches = Confirm-ObjectValueEqualityDeep $deployedManagedExemption.resourceSelectors $resourceSelectors
@@ -1032,6 +1072,59 @@ function Build-ExemptionsPlan {
                                             $Exemptions.numberOfChanges++
                                             Write-ModernStatus -Message "Update ($changesString): '$($exemptionDisplayName)' at scope '$($currentScope)'" -Status "update" -Indent 4
                                             $null = $Exemptions.update.Add($exemptionId, $exemption)
+                                            
+                                            # Show detailed diff if requested
+                                            if ($DetailedOutput) {
+                                                Write-Host ""
+                                                Write-ModernStatus -Message "[Policy Exemption] Detailed Changes for: $exemptionDisplayName" -Status "info" -Indent 6
+                                                foreach ($change in $changesStrings) {
+                                                    switch -Wildcard ($change) {
+                                                        "*display*" {
+                                                            Write-SimplePropertyDiff -PropertyName "Display Name" -OldValue $deployedManagedExemption.displayName -NewValue $exemptionDisplayName -Indent 8
+                                                        }
+                                                        "*description*" {
+                                                            Write-SimplePropertyDiff -PropertyName "Description" -OldValue $deployedManagedExemption.description -NewValue $exemptionDescription -Indent 8
+                                                        }
+                                                        "*category*" {
+                                                            Write-SimplePropertyDiff -PropertyName "Exemption Category" -OldValue $deployedManagedExemption.exemptionCategory -NewValue $exemptionCategory -Indent 8
+                                                        }
+                                                        "*expires*" {
+                                                            Write-SimplePropertyDiff -PropertyName "Expiration Date" -OldValue $deployedManagedExemption.expiresOn -NewValue $exemptionExpiresOn -Indent 8
+                                                        }
+                                                        "*metadata*" {
+                                                            # Filter Azure system-managed properties and EPAC-managed pacOwnerId from metadata display
+                                                            $systemManagedProperties = @("createdBy", "createdOn", "updatedBy", "updatedOn", "lastSyncedToArgOn")
+                                                            $filteredDeployedMetadata = @{}
+                                                            $filteredDesiredMetadata = @{}
+                                                            
+                                                            if ($deployedManagedExemption.metadata) {
+                                                                foreach ($key in $deployedManagedExemption.metadata.Keys) {
+                                                                    if ($key -notin $systemManagedProperties -and $key -ne "pacOwnerId") {
+                                                                        $filteredDeployedMetadata[$key] = $deployedManagedExemption.metadata[$key]
+                                                                    }
+                                                                }
+                                                            }
+                                                            
+                                                            if ($exemptionMetadata) {
+                                                                foreach ($key in $exemptionMetadata.Keys) {
+                                                                    if ($key -ne "pacOwnerId") {
+                                                                        $filteredDesiredMetadata[$key] = $exemptionMetadata[$key]
+                                                                    }
+                                                                }
+                                                            }
+                                                            
+                                                            Write-DetailedDiff -DeployedObject $filteredDeployedMetadata -DesiredObject $filteredDesiredMetadata -PropertyName "Metadata" -Indent 8
+                                                        }
+                                                        "*definitions*" {
+                                                            Write-DetailedDiff -DeployedObject $deployedManagedExemption.policyDefinitionReferenceIds -DesiredObject $policyDefinitionReferenceIds -PropertyName "Policy Definition Reference IDs" -Indent 8
+                                                        }
+                                                        "*selectors*" {
+                                                            Write-DetailedDiff -DeployedObject $deployedManagedExemption.resourceSelectors -DesiredObject $resourceSelectors -PropertyName "Resource Selectors" -Indent 8
+                                                        }
+                                                    }
+                                                }
+                                                Write-Host ""
+                                            }
                                         }
                                     }
                                 }
@@ -1046,6 +1139,119 @@ function Build-ExemptionsPlan {
                                     Write-ModernStatus -Message "New '$($exemptionDisplayName)' at scope '$($currentScope)'" -Status "success" -Indent 4
                                     $null = $Exemptions.new.Add($exemptionId, $exemption)
                                     $Exemptions.numberOfChanges++
+                                    
+                                    # Show detailed content for new exemptions if requested
+                                    if ($DetailedOutput) {
+                                        Write-Host ""
+                                        Write-ModernStatus -Message "[Policy Exemption] Details for New Exemption:" -Status "info" -Indent 6
+                                        
+                                        # Display Name
+                                        Write-ColoredOutput -Message "        + " -NoNewline -ForegroundColor Green
+                                        Write-ColoredOutput -Message "Display Name: " -NoNewline -ForegroundColor Gray
+                                        Write-ColoredOutput -Message "`"$exemptionDisplayName`"" -ForegroundColor Green
+                                        
+                                        # Scope
+                                        Write-ColoredOutput -Message "        + " -NoNewline -ForegroundColor Green
+                                        Write-ColoredOutput -Message "Scope: " -NoNewline -ForegroundColor Gray
+                                        Write-ColoredOutput -Message $currentScope -ForegroundColor Green
+                                        
+                                        # Policy Assignment ID
+                                        Write-ColoredOutput -Message "        + " -NoNewline -ForegroundColor Green
+                                        Write-ColoredOutput -Message "Policy Assignment ID: " -NoNewline -ForegroundColor Gray
+                                        Write-ColoredOutput -Message $exemption.policyAssignmentId -ForegroundColor Green
+                                        
+                                        # Exemption Category
+                                        Write-ColoredOutput -Message "        + " -NoNewline -ForegroundColor Green
+                                        Write-ColoredOutput -Message "Exemption Category: " -NoNewline -ForegroundColor Gray
+                                        Write-ColoredOutput -Message "`"$($exemption.exemptionCategory)`"" -ForegroundColor Green
+                                        
+                                        # Description if any
+                                        if ($exemption.description) {
+                                            Write-ColoredOutput -Message "        + " -NoNewline -ForegroundColor Green
+                                            Write-ColoredOutput -Message "Description: " -NoNewline -ForegroundColor Gray
+                                            Write-ColoredOutput -Message "`"$($exemption.description)`"" -ForegroundColor Green
+                                        }
+                                        
+                                        # Expiration
+                                        if ($exemption.expiresOn) {
+                                            Write-ColoredOutput -Message "        + " -NoNewline -ForegroundColor Green
+                                            Write-ColoredOutput -Message "Expires On: " -NoNewline -ForegroundColor Gray
+                                            Write-ColoredOutput -Message $exemption.expiresOn -ForegroundColor Green
+                                        }
+                                        
+                                        # Policy Definition Reference IDs if any - show full list
+                                        if ($exemption.policyDefinitionReferenceIds -and $exemption.policyDefinitionReferenceIds.Count -gt 0) {
+                                            Write-ColoredOutput -Message "        + " -NoNewline -ForegroundColor Green
+                                            Write-ColoredOutput -Message "Policy Definition Reference IDs: " -NoNewline -ForegroundColor Gray
+                                            Write-ColoredOutput -Message "$($exemption.policyDefinitionReferenceIds.Count) reference(s)" -ForegroundColor Green
+                                            foreach ($refId in $exemption.policyDefinitionReferenceIds) {
+                                                Write-ColoredOutput -Message "            - " -NoNewline -ForegroundColor Green
+                                                Write-ColoredOutput -Message $refId -ForegroundColor Green
+                                            }
+                                        }
+                                        
+                                        # Assignment Scope Validation if specified
+                                        if ($null -ne $exemption.assignmentScopeValidation) {
+                                            Write-ColoredOutput -Message "        + " -NoNewline -ForegroundColor Green
+                                            Write-ColoredOutput -Message "Assignment Scope Validation: " -NoNewline -ForegroundColor Gray
+                                            Write-ColoredOutput -Message "`"$($exemption.assignmentScopeValidation)`"" -ForegroundColor Green
+                                        }
+                                        
+                                        # Resource Selectors if any - show detailed list
+                                        if ($exemption.resourceSelectors -and $exemption.resourceSelectors.Count -gt 0) {
+                                            Write-ColoredOutput -Message "        + " -NoNewline -ForegroundColor Green
+                                            Write-ColoredOutput -Message "Resource Selectors: " -NoNewline -ForegroundColor Gray
+                                            Write-ColoredOutput -Message "$($exemption.resourceSelectors.Count) selector(s)" -ForegroundColor Green
+                                            foreach ($selector in $exemption.resourceSelectors) {
+                                                Write-ColoredOutput -Message "            - " -NoNewline -ForegroundColor Green
+                                                Write-ColoredOutput -Message "Name: " -NoNewline -ForegroundColor Gray
+                                                Write-ColoredOutput -Message "`"$($selector.name)`"" -ForegroundColor Green
+                                                
+                                                # Show selectors array
+                                                if ($selector.selectors -and $selector.selectors.Count -gt 0) {
+                                                    foreach ($sel in $selector.selectors) {
+                                                        Write-ColoredOutput -Message "              Kind: " -NoNewline -ForegroundColor Gray
+                                                        Write-ColoredOutput -Message "$($sel.kind)" -ForegroundColor Green
+                                                        
+                                                        # Show 'in' array if present
+                                                        if ($sel.in -and $sel.in.Count -gt 0) {
+                                                            Write-ColoredOutput -Message "              In: " -NoNewline -ForegroundColor Gray
+                                                            Write-ColoredOutput -Message "[$($sel.in -join ', ')]" -ForegroundColor Green
+                                                        }
+                                                        
+                                                        # Show 'notIn' array if present
+                                                        if ($sel.notIn -and $sel.notIn.Count -gt 0) {
+                                                            Write-ColoredOutput -Message "              Not In: " -NoNewline -ForegroundColor Gray
+                                                            Write-ColoredOutput -Message "[$($sel.notIn -join ', ')]" -ForegroundColor Green
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        
+                                        # Metadata if any (excluding system properties)
+                                        if ($exemption.metadata) {
+                                            $systemManagedProperties = @("createdBy", "createdOn", "updatedBy", "updatedOn", "lastSyncedToArgOn")
+                                            $filteredMetadata = @{}
+                                            foreach ($key in $exemption.metadata.Keys) {
+                                                if ($key -notin $systemManagedProperties) {
+                                                    $filteredMetadata[$key] = $exemption.metadata[$key]
+                                                }
+                                            }
+                                            if ($filteredMetadata.Count -gt 0) {
+                                                Write-ColoredOutput -Message "        + " -NoNewline -ForegroundColor Green
+                                                Write-ColoredOutput -Message "Metadata:" -ForegroundColor Gray
+                                                foreach ($key in ($filteredMetadata.Keys | Sort-Object)) {
+                                                    Write-ColoredOutput -Message "            + " -NoNewline -ForegroundColor Green
+                                                    Write-ColoredOutput -Message "$key" -NoNewline -ForegroundColor White
+                                                    Write-ColoredOutput -Message " = " -NoNewline -ForegroundColor Gray
+                                                    Write-ColoredOutput -Message "`"$($filteredMetadata[$key])`"" -ForegroundColor Green
+                                                }
+                                            }
+                                        }
+                                        
+                                        Write-Host ""
+                                    }
                                 }
                             }
                         }
@@ -1103,11 +1309,137 @@ function Build-ExemptionsPlan {
             }
         }
         if ($shallDelete) {
-            # check fo special Exemption cases
-            Write-ModernStatus -Message "Delete '$($exemption.displayName)' at scope '$($exemption.scope)'" -Status "error" -Indent 4
+            # Check if exemption has expired
+            $isExpired = $false
+            $expiredMessage = ""
+            if ($exemption.expiresOn) {
+                $now = Get-Date
+                $expiresDate = if ($exemption.expiresOn -is [datetime]) { 
+                    $exemption.expiresOn 
+                } elseif ($exemption.expiresOn -is [string]) {
+                    try {
+                        [datetime]::Parse($exemption.expiresOn, $null, [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal)
+                    } catch {
+                        $null
+                    }
+                } else {
+                    $null
+                }
+                
+                if ($null -ne $expiresDate -and $expiresDate -lt $now) {
+                    $isExpired = $true
+                    $daysExpired = [Math]::Abs((New-TimeSpan -Start $expiresDate -End $now).Days)
+                    if ($daysExpired -eq 0) {
+                        $expiredMessage = " (EXPIRED TODAY)"
+                    } else {
+                        $expiredMessage = " (EXPIRED $daysExpired day(s) ago)"
+                    }
+                }
+            }
+            
+            # Display delete message with expiration indicator
+            $deleteMessage = "Delete '$($exemption.displayName)' at scope '$($exemption.scope)'$expiredMessage"
+            Write-ModernStatus -Message $deleteMessage -Status "error" -Indent 4
             Write-Verbose "    $exemptionId"
             $null = $Exemptions.delete[$exemptionId] = $exemption
             $Exemptions.numberOfChanges++
+            
+            # Show detailed content for deleted exemptions if requested
+            if ($DetailedOutput) {
+                Write-Host ""
+                if ($isExpired) {
+                    Write-ModernStatus -Message "[Policy Exemption] Details for Deleted Exemption (EXPIRED):" -Status "info" -Indent 6
+                } else {
+                    Write-ModernStatus -Message "[Policy Exemption] Details for Deleted Exemption:" -Status "info" -Indent 6
+                }
+                
+                # Display Name
+                Write-ColoredOutput -Message "        - " -NoNewline -ForegroundColor Red
+                Write-ColoredOutput -Message "Display Name: " -NoNewline -ForegroundColor Gray
+                Write-ColoredOutput -Message "`"$($exemption.displayName)`"" -ForegroundColor Red
+                
+                # Scope
+                Write-ColoredOutput -Message "        - " -NoNewline -ForegroundColor Red
+                Write-ColoredOutput -Message "Scope: " -NoNewline -ForegroundColor Gray
+                Write-ColoredOutput -Message $exemption.scope -ForegroundColor Red
+                
+                # Policy Assignment ID
+                Write-ColoredOutput -Message "        - " -NoNewline -ForegroundColor Red
+                Write-ColoredOutput -Message "Policy Assignment ID: " -NoNewline -ForegroundColor Gray
+                Write-ColoredOutput -Message $exemption.policyAssignmentId -ForegroundColor Red
+                
+                # Exemption Category
+                Write-ColoredOutput -Message "        - " -NoNewline -ForegroundColor Red
+                Write-ColoredOutput -Message "Exemption Category: " -NoNewline -ForegroundColor Gray
+                Write-ColoredOutput -Message "`"$($exemption.exemptionCategory)`"" -ForegroundColor Red
+                
+                # Description if any
+                if ($exemption.description) {
+                    Write-ColoredOutput -Message "        - " -NoNewline -ForegroundColor Red
+                    Write-ColoredOutput -Message "Description: " -NoNewline -ForegroundColor Gray
+                    Write-ColoredOutput -Message "`"$($exemption.description)`"" -ForegroundColor Red
+                }
+                
+                # Expiration
+                if ($exemption.expiresOn) {
+                    Write-ColoredOutput -Message "        - " -NoNewline -ForegroundColor Red
+                    Write-ColoredOutput -Message "Expires On: " -NoNewline -ForegroundColor Gray
+                    if ($isExpired) {
+                        Write-ColoredOutput -Message "$($exemption.expiresOn) " -NoNewline -ForegroundColor Red
+                        Write-ColoredOutput -Message "[EXPIRED]" -ForegroundColor Yellow
+                    } else {
+                        Write-ColoredOutput -Message $exemption.expiresOn -ForegroundColor Red
+                    }
+                }
+                
+                # Policy Definition Reference IDs if any
+                if ($exemption.policyDefinitionReferenceIds -and $exemption.policyDefinitionReferenceIds.Count -gt 0) {
+                    Write-ColoredOutput -Message "        - " -NoNewline -ForegroundColor Red
+                    Write-ColoredOutput -Message "Policy Definition Reference IDs: " -NoNewline -ForegroundColor Gray
+                    Write-ColoredOutput -Message "$($exemption.policyDefinitionReferenceIds.Count) reference(s)" -ForegroundColor Red
+                    foreach ($refId in $exemption.policyDefinitionReferenceIds) {
+                        Write-ColoredOutput -Message "            - " -NoNewline -ForegroundColor Red
+                        Write-ColoredOutput -Message $refId -ForegroundColor Red
+                    }
+                }
+                
+                # Assignment Scope Validation if specified
+                if ($null -ne $exemption.assignmentScopeValidation) {
+                    Write-ColoredOutput -Message "        - " -NoNewline -ForegroundColor Red
+                    Write-ColoredOutput -Message "Assignment Scope Validation: " -NoNewline -ForegroundColor Gray
+                    Write-ColoredOutput -Message "`"$($exemption.assignmentScopeValidation)`"" -ForegroundColor Red
+                }
+                
+                # Resource Selectors if any
+                if ($exemption.resourceSelectors -and $exemption.resourceSelectors.Count -gt 0) {
+                    Write-ColoredOutput -Message "        - " -NoNewline -ForegroundColor Red
+                    Write-ColoredOutput -Message "Resource Selectors: " -NoNewline -ForegroundColor Gray
+                    Write-ColoredOutput -Message "$($exemption.resourceSelectors.Count) selector(s)" -ForegroundColor Red
+                }
+                
+                # Metadata if any (excluding system properties)
+                if ($exemption.metadata) {
+                    $systemManagedProperties = @("createdBy", "createdOn", "updatedBy", "updatedOn", "lastSyncedToArgOn")
+                    $filteredMetadata = @{}
+                    foreach ($key in $exemption.metadata.Keys) {
+                        if ($key -notin $systemManagedProperties) {
+                            $filteredMetadata[$key] = $exemption.metadata[$key]
+                        }
+                    }
+                    if ($filteredMetadata.Count -gt 0) {
+                        Write-ColoredOutput -Message "        - " -NoNewline -ForegroundColor Red
+                        Write-ColoredOutput -Message "Metadata:" -ForegroundColor Gray
+                        foreach ($key in ($filteredMetadata.Keys | Sort-Object)) {
+                            Write-ColoredOutput -Message "            - " -NoNewline -ForegroundColor Red
+                            Write-ColoredOutput -Message "$key" -NoNewline -ForegroundColor White
+                            Write-ColoredOutput -Message " = " -NoNewline -ForegroundColor Gray
+                            Write-ColoredOutput -Message "`"$($filteredMetadata[$key])`"" -ForegroundColor Red
+                        }
+                    }
+                }
+                
+                Write-Host ""
+            }
         }
         else {
             Write-Verbose "Keep: '$($exemption.displayName)'($($exemption.name)), '$($exemption.scope)' $reason"
@@ -1121,3 +1453,5 @@ function Build-ExemptionsPlan {
     }
     Write-Information ""
 }
+
+

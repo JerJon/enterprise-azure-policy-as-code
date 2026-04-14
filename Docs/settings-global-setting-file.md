@@ -1,5 +1,14 @@
 # Global Settings
 
+<div style="margin: 30px 0; position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; height: auto;">
+  <iframe src="https://www.youtube.com/embed/EGjjeaYMCWQ" 
+          style="position: absolute; top:0; left:0; width:100%; height:100%;" 
+          frameborder="0" 
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+          allowfullscreen>
+  </iframe>
+</div>
+
 ## Overview
 
 `global-settings.jsonc` has following sections explained below:
@@ -95,6 +104,7 @@ EPAC has a concept of an environment identified by a string (unique per reposito
 | `desiredState.strategy` | Defines the desired state strategy. See [Desired State Strategy](settings-desired-state.md). |
 | `keepDfcSecurityAssignments` | See [Managing Defender for Cloud Policy Assignments](settings-dfc-assignments.md). |
 | `doNotDisableDeprecatedPolicies` | Automatically set deprecated policies' policy effect to "Disabled". This setting can be used to override that behavior by setting it to `true`. Default is `false`. |
+| `manageChildScopeDefinitions` | When `true`, EPAC manages Policy Definitions and Policy Set Definitions at child scopes (child management groups, subscriptions) under the `deploymentRootScope`, making them eligible for deletion. Default is `false`. See [Managing Child Scope Definitions](settings-desired-state.md#managing-child-scope-definitions). |
 | `managedIdentityLocation` | See [DeployIfNotExists and Modify Policy Assignments need `managedIdentityLocation`](#deployifnotexists-and-modify-policy-assignments-need-managedidentitylocation) |
 
 #### Deployment Scope Formats

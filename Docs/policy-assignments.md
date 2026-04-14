@@ -1,6 +1,15 @@
 
 # Policy Assignments
 
+<div style="margin: 30px 0; position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; height: auto;">
+  <iframe src="https://www.youtube.com/embed/ffHxoXL91ew" 
+          style="position: absolute; top:0; left:0; width:100%; height:100%;" 
+          frameborder="0" 
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+          allowfullscreen>
+  </iframe>
+</div>
+
 This chapter describes how **Policy Assignments** are handled by EPAC. Policy Assignments are the actual assignments of Policies and Policy Sets to scopes in Azure.
 
 ## Templates
@@ -318,6 +327,9 @@ If the additional assignment is to made to a managing tenant in the scenario whe
 
 Azure Policy can use a user-defined Managed Identity and EPAC allows you to use this functionality. You must specify the user-defined Managed Identity based on EPAC Environment or use `"*"` to use the same identity for all of the EPAC Environments (only possible in single tenant scenarios). Within each EPAC Environment entry, you can specify just the URI string indicating to use the same identity even if we are using a `definitionEntryList`, or in the case of a `definitionEntryList` can assign a different identity based on the definitionEntryList by specifying a matching `policyName`, `policyId`, `policySetName` or `policySetId`.
 
+> [!IMPORTANT]
+> When using user-assigned managed identities for remediation of DeployIfNotExists or Modify policies, the service principal running your CI/CD pipeline requires the `Managed Identity Operator` role or the specific permission `Microsoft.ManagedIdentity/userAssignedIdentities/assign/action` at the scope where the user-assigned managed identities are located. This permission allows the pipeline to assign the managed identity to the policy assignment. See [App Registration & Service Principal Setup](ci-cd-app-registrations.md) for more details on configuring service principal permissions.
+
 ```json
 "userAssignedIdentity": {
     // For single definitionEntry or when using the same identity for all definitions being assigned
@@ -384,14 +396,13 @@ Implement these steps as documented in [Managing Policy Assignment Parameters wi
 
 `overrides` are in the same [format as documented by Azure](https://learn.microsoft.com/en-us/azure/governance/policy/concepts/assignment-structure#overrides-preview). They are  cumulative in each tree branch. The `selectors` element is only used for Assignments of Policy Sets. They are not valid for Assignments of a single Policy.
 
-If using `definitionEntryList`, you must add the `policyName`, `policyId`, `policySetName` or `policySetId` as used in the `definitionEntryList` item.
+If your assignment file is using the property `definitionEntry`, the following template is valid.
 
 ```json
 "overrides": [
     {
-        "policySetId": "/providers/Microsoft.Authorization/policySetDefinitions/179d1daa-458f-4e47-8086-2a68d0d6c38f",
         "kind": "policyEffect",
-        "value": "AuditIfNotExists",
+        "value": "disabled",
         "selectors": [
             {
                 "kind": "policyDefinitionReferenceId",
@@ -401,17 +412,24 @@ If using `definitionEntryList`, you must add the `policyName`, `policyId`, `poli
                 ]
             }
         ]
-    },
+    }
+],
+```
+
+If your assignment file is using the property `definitionEntryList`, you must add the `policyName`, `policyId`, `policySetName` or `policySetId` as used in the `definitionEntryList` item.
+
+```json
+"overrides": [
     {
         "policySetId": "/providers/Microsoft.Authorization/policySetDefinitions/179d1daa-458f-4e47-8086-2a68d0d6c38f",
         "kind": "policyEffect",
-        "value": "AuditIfNotExists",
+        "value": "disabled",
         "selectors": [
             {
                 "kind": "policyDefinitionReferenceId",
                 "in": [
-                    "cddd188c-4b82-4c48-a19d-ddf74ee66a01",
-                    "3cf2ab00-13f1-4d0c-8971-2ac904541a7e"
+                    "331e8ea8-378a-410f-a2e5-ae22f38bb0da",
+                    "385f5831-96d4-41db-9a3c-cd3af78aaae6"
                 ]
             }
         ]
